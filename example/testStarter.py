@@ -4,6 +4,6 @@ sys.path.append("..")
 
 from FunnyTest.Starter.JSONStarter import JSONStarter
 
-starter = JSONStarter("./TestCases/test2.json", "./CustomProcedure")
+starter = JSONStarter("./TestCases/test1.json", "./CustomProcedure")
 starter.run(True) # True: Headless; False: not headless
 starter.getSummary()
