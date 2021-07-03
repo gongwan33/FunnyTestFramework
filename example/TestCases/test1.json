@@ -1,0 +1,17 @@
+[
+    {
+        "type": "stdProcedure",
+        "id": "exampleP1S1",
+        "command": "visit",
+        "params": ["https://google.com", "img", 20],
+        "expect": true,
+        "expectTime": 300
+    },
+    {
+        "type": "customProcedure",
+        "id": "exampleCP1S2",
+        "command": "ExampleCustomStep",
+        "params": ["testParam1"],
+        "expect": true
+    }
+]
