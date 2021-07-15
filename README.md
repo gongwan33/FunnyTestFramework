@@ -31,7 +31,7 @@ To start a test, please refer to the `example` folder. The `testStarter.py` is t
 In `testStarter.py`, there are mainly three lines of code (as shown below) and they can be used in most of the senarios. The first line creates a new JSON starter with the test vector json file's path and the custom procedures' folder (see next chapter `Extendability`). The second line starts the test. If its parameter is set to True, the headless mode will be activated. Otherwise, the chrome browser will show up. 
 
 ```python
-starter = JSONStarter("./TestCases/test1.json", "./CustomProcedure")
+starter = JSONStarter("./TestCases", "./CustomProcedure")
 starter.run(True) # True: Headless; False: not headless
 starter.getSummary()
 ```
@@ -42,13 +42,14 @@ Apart from the pre written standard procedure functions, you can add your custom
 
 ### Standard procedures
 
-A standar procedure looks like the following:
+A standard procedure block looks like the following:
 
 ```json
 {
     "type": "stdProcedure",
     "id": "CSLoginTest",
     "command": "click",
+    "condition": "%result[ProcedureA]%",
     "params": ["#sign"],
     "expect": true,
     "expectTime": 100
@@ -63,11 +64,17 @@ A standar procedure looks like the following:
 
 - `command`: the command you are going to run for test. See `Standard Commands`.
 
+- `condition`: reference to the result of `ProcedureA` as condition to execute this procedure block. 
+
 - `params`: the params taken by the `command`. See `Standard Commands`.
 
 - `expect`: expected return for this test. If the actual return is the same as expected, the procedure will be considered as pass.
 
 - `expectTime`: expected time consumption by this test. If the actual time consumption is less than or equal to the expected time consumption, the procedure will be considered as pass.
+
+### Referencing the Result of Anther Procedure
+
+In `condition` and `params`, `%result[ProcedureId]%` can be used to fetch other procedure's result. In `params`, this can even used inside a string to accomplish more complex tasks. For example, `https://%result[GetURLFromItem]%/login` is able to generate a url based on the result of `GetURLFromItem`.
 
 ### Standard Commands
 
@@ -83,7 +90,7 @@ Parameters:
 
 - timeOut: the maximum time for waiting.
 
-- waitFun: The waiting mode. For details, please refer to https://selenium-python.readthedocs.io/waits.html. The supported functions are:
+- waitFun: the waiting mode. For details, please refer to https://selenium-python.readthedocs.io/waits.html. The supported functions are:
 
 * presence_of_element_located
 
@@ -100,6 +107,8 @@ Parameters:
 * element_to_be_selected
 
 * element_located_to_be_selected
+
+- appendCredential: the credentials for browser verification. (Format: "username:password")
 
 Return: bool
 
@@ -187,6 +196,32 @@ windowHandle: The handle for the target window. If set to -1, switch to the last
 
 Return: bool
         
+#### closeCurrentWindow
 
+Close current window
+
+Return: bool
+
+#### getAttribute
+
+Get the attribute from a element.
+
+Parameters:
+
+css: the css for locating the target.
+        
+attr: the attribute name.
+        
+Return: string
+
+#### scrollTo
+
+Scroll to a specific element.
+
+Parameters:
+
+css: the css of the target element.
+        
+Return: bool
 
 
