@@ -28,7 +28,11 @@ There are three folders in the FunnyTest directory which is the core part of the
 
 To start a test, please refer to the `example` folder. The `testStarter.py` is the entry script. Run command `python3 testStarter.py` will start the test process. 
 
-In `testStarter.py`, there are mainly three lines of code (as shown below) and they can be used in most of the senarios. The first line creates a new JSON starter with the test vector json file's path and the custom procedures' folder (see next chapter `Extendability`). The second line starts the test. If its parameter is set to True, the headless mode will be activated. Otherwise, the chrome browser will show up. 
+In `testStarter.py`, there are mainly three lines of code (as shown below) and they can be used in most of the senarios. 
+
+The first line creates a new JSON starter with the test vector json files' directory path and the custom procedures' folder (see next chapter `Extendability`). The test vector json file's name will be used as the `Test Run` name which will contain the procedures.
+
+The second line starts the test. If its parameter is set to True, the headless mode will be activated. Otherwise, the chrome browser will show up. 
 
 ```python
 starter = JSONStarter("./TestCases", "./CustomProcedure")
