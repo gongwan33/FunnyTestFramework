@@ -28,11 +28,11 @@ class FunnyTestBase:
         """
 
         self.chrome_options = webdriver.ChromeOptions()
+        self.chrome_options.add_argument("--window-size=%s" % windowSize)
 
         if isHeadless:
             self.chrome_options.add_argument("--headless")
             self.chrome_options.add_argument("--no-sandbox")
-            self.chrome_options.add_argument("--window-size=%s" % windowSize)
 
         self.driver = webdriver.Chrome(options = self.chrome_options)
         self.logUtil = TestLog()
@@ -57,7 +57,7 @@ class FunnyTestBase:
 
         return self.driver
 
-    def visit(self, url, waitCSS = None, timeOut = 40, waitFunc = "visibility_of_element_located"):
+    def visit(self, url, waitCSS = None, timeOut = 40, waitFunc = "visibility_of_element_located", appendCredential = None):
         """
         Visit a specific url and wait for a specific element 
 
@@ -67,12 +67,14 @@ class FunnyTestBase:
             The target url
         waitCSS : string
             The css for locating the target element to wait util return a result. If set None, no element will be waited
-        timeOut: int
+        timeOut : int
             The seconds to wait
-        waitFunc: string
+        waitFunc : string
             The EC function used for detecting target element. 
             For example: visibility_of_element_located, invisibility_of_element_located, 
             presence_of_element_located, element_to_be_clickable
+        appendCredential : string
+            The credentials for browser verification. (Format: "username:password")
 
         Return
         ----------
@@ -82,6 +84,10 @@ class FunnyTestBase:
         """
 
         try:
+            if appendCredential is not None:
+                url = url.replace('https://', 'https://' + appendCredential + '@')
+                url = url.replace('http://', 'https://' + appendCredential + '@')
+            
             self.driver.get(url)
 
             if waitCSS is not None:
@@ -103,6 +109,21 @@ class FunnyTestBase:
         if self.driver is not None:
             self.driver.close()
             self.driver = None
+
+    def closeCurrentWindow(self):
+        """
+        Close current window
+        """
+
+        try:
+            if self.driver is not None:
+                self.driver.close()
+        except Exception as e:
+            self.logUtil.log(e)
+            return False
+
+        return True
+
 
     def waitFor(self, waitCSS, timeOut = 40, waitFunc = "visibility_of_element_located"):
         """
@@ -235,6 +256,37 @@ class FunnyTestBase:
 
         return False
 
+    def getAttribute(self, css, attr):
+        """
+        Count the attribute from a element.
+
+        Parameters
+        ----------
+        css : string
+            The css for locating the target.
+        
+        attr : string
+            The attribute name.
+        
+        Return
+        ----------
+        string
+        The corresponding attribute. If not found, return None
+        """
+
+        try:
+            targetEle = self.driver.find_element(By.CSS_SELECTOR, css)
+            
+            if targetEle is not None:
+                return targetEle.get_attribute(attr)
+
+        except Exception as e:
+            self.logUtil.log(e)
+            self.close()
+            return None
+
+        return None
+
     def countElements(self, css):
         """
         Count the target elements.
@@ -350,3 +402,30 @@ class FunnyTestBase:
             self.logUtil.log(e)
             self.close()
             return False
+
+    def scrollTo(self, css):
+        """
+        Scroll to a specific element.
+        
+        Parameters
+        ----------
+        css : string
+            The css of the target element.
+        
+        Return
+        ----------
+        bool
+        Return True if successfully scrolled.
+        Otherwise return False.
+        """
+
+        try:
+            element = self.driver.find_element(By.CSS_SELECTOR, css)
+            self.driver.execute_script("arguments[0].scrollIntoView();", element)
+
+        except Exception as e:
+            self.logUtil.log(e)
+            self.close()
+            return False
+
+        return True

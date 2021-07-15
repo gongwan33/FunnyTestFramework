@@ -4,6 +4,13 @@ sys.path.append("..")
 
 from FunnyTest.Starter.JSONStarter import JSONStarter
 
-starter = JSONStarter("./TestCases/test1.json", "./CustomProcedure")
+starter = JSONStarter("./TestCases", "./CustomProcedure")
 starter.run(True) # True: Headless; False: not headless
-starter.getSummary()
+res = starter.getSummary()
+
+print("\nTest end.\n")
+
+if res['failedNumber'] > 0:
+    exit(-1)
+else:
+    exit(0)

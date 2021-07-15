@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import re
 import importlib
 from .FunnyTestBase import FunnyTestBase
 from ..Log.TestLog import TestLog
@@ -10,13 +11,69 @@ class FunnyProcedure:
     The class containing functions for different test procedures
     """
 
-    def __init__(self, isHeadLess = False):
+    def __init__(self, isHeadLess = False, windowSize = "1920,1080"):
         self.returnList = {}
-        self.funnyTestBase = FunnyTestBase(isHeadLess)
+        self.funnyTestBase = FunnyTestBase(isHeadLess, windowSize)
         self.customFuncMods = []
-        self.failedCases = []
-        self.successfulCases = []
+        self.summaries = {}
         self.logUtil = TestLog()
+
+    def parseShortCode(self, param, runName):
+        """
+        Parse short codes
+
+        Parameters
+        ----------
+        param : string
+            The original param string
+
+        Return
+        ----------
+        any
+        The result params
+        """
+
+        if isinstance(param, str) and len(param) > 2:
+
+                match = re.search(r'(.*)%result\[\"?\'?(\w+)\'?\"?\]%(.*)', param)
+
+                if match != None and len(match.groups()) >= 2:
+                    resKey = match.group(2)
+                    prefix = match.group(1)
+
+                    if (runName in self.returnList) and (resKey in self.returnList[runName]):
+                        resVal = self.returnList[runName][resKey]
+
+                        if len(match.groups()) > 2:
+                            surfix = match.group(3)
+
+                            if len(surfix) > 0 and type(resVal) == str:
+                                resVal = prefix + resVal + surfix
+
+                        return resVal
+
+        return param
+
+    def generateParams(self, params, runName):
+        """
+        Filter params and replace the elements according to the Funny Test Magic Param rules
+
+        Parameters
+        ----------
+        params : list
+            The original params
+
+        Return
+        ----------
+        list
+        The result params
+        """
+        
+        resParams = []
+        for param in params:
+            resParams.append(self.parseShortCode(param, runName))
+
+        return resParams
 
     def loadCustomProcedures(self, path):
         """
@@ -54,7 +111,7 @@ class FunnyProcedure:
 
         return None
 
-    def saveResult(self, validationResult, procedureDict):
+    def saveResult(self, validationResult, procedureDict, runName):
         """
         Save result to the sucessful/failed cases list
 
@@ -72,13 +129,21 @@ class FunnyProcedure:
         
         procedureDict['testResult'] = validationResult
 
+        if runName not in self.summaries:
+            self.summaries[runName] = {
+                'successfulCases': [],
+                'failedCases': [],
+            }
+
         if not (validationResult['expectedValueTestResult'] and validationResult['expectedTimeTestResult']):
-            self.failedCases.append(procedureDict)
+            
+            self.summaries[runName]['failedCases'].append(procedureDict)
             #break
         else:
-            self.successfulCases.append(procedureDict)
 
-    def procedure(self, procedureList):
+            self.summaries[runName]['successfulCases'].append(procedureDict)
+
+    def procedure(self, procedureList, runName):
         """
         The function to deal with procedures 
 
@@ -128,50 +193,70 @@ class FunnyProcedure:
                 if 'expectTime' in procedureDict:
                     expectTime = procedureDict['expectTime']
 
+                condition = None
+                if 'condition' in procedureDict:
+                    condition = procedureDict['condition']
+
+                params = self.generateParams(params, runName)
+
                 self.logUtil.log("Processing: " + id)
                 self.logUtil.log("------------------------------------")
                 self.logUtil.log("type: " + procedureType)
                 self.logUtil.log("command: " + command)
                 self.logUtil.log("params: " + ','.join(map(lambda x: str(x), params)))
-                self.logUtil.log("expect: " + str(expectValue))
+
+                if condition != None:
+                    self.logUtil.log("condition: " + str(condition))
+
+                if expectValue != None:
+                    self.logUtil.log("expect: " + str(expectValue))
+
+                if expectTime != None:
+                    self.logUtil.log("expect time: " + str(expectTime))
                 self.logUtil.log("====================================")
 
+                if condition != None and not self.parseShortCode(condition, runName):
+                    self.logUtil.log("Condition value is: " + str(condition))
+                    continue
+                
                 timeStampStart = time.time()
                 if procedureType == 'stdProcedure':
-
-                    if not self.checkReturnIdExist(id):
-                        self.returnList[id] = getattr(self.funnyTestBase, command)(*params)
-
+                    
+                    if not self.checkReturnIdExist(id, runName):
+                        self.returnList[runName][id] = getattr(self.funnyTestBase, command)(*params)
+                        
                         timeConsumption = round((time.time() - timeStampStart) * 1000)
-                        validationResult = self.validateExpectValue(expectValue, self.returnList[id], expectTime, timeConsumption)
+                        validationResult = self.validateExpectValue(expectValue, self.returnList[runName][id], expectTime, timeConsumption)
                         self.logUtil.log("Time consumption (ms): " + str(validationResult['actualTime']))
 
-                        self.saveResult(validationResult, procedureDict)
+                        self.saveResult(validationResult, procedureDict, runName)
                         
                     else:
+                        self.logUtil.log("Duplicated procedure id.", 'warning')
                         break
 
                 elif procedureType == 'customProcedure':
                     driver = self.funnyTestBase.getDriver()
                     params.insert(0, driver)
 
-                    if not self.checkReturnIdExist(id):
+                    if not self.checkReturnIdExist(id, runName):
                         
                         customProcedure = self.getFunc(command)
 
                         if customProcedure is not None:
-                            self.returnList[id] = customProcedure(*params)
+                            self.returnList[runName][id] = customProcedure(*params)
 
                             timeConsumption = round((time.time() - timeStampStart) * 1000)
-                            validationResult = self.validateExpectValue(expectValue, self.returnList[id], expectTime, timeConsumption)
+                            validationResult = self.validateExpectValue(expectValue, self.returnList[runName][id], expectTime, timeConsumption)
                             self.logUtil.log("Time consumption (ms): " + str(validationResult['actualTime']))
 
-                            self.saveResult(validationResult, procedureDict)
+                            self.saveResult(validationResult, procedureDict, runName)
                             
                         else:
-                            self.logUtil.log('Error: ' + command + 'does not exist.')
+                            self.logUtil.log('Error: ' + command + 'does not exist.', 'warning')
                     
                     else:
+                        self.logUtil.log("Duplicated procedure id.", 'warning')
                         break
 
                 self.logUtil.log("====================================\n\n")
@@ -186,7 +271,7 @@ class FunnyProcedure:
 
         return True
 
-    def checkReturnIdExist(self, returnId):
+    def checkReturnIdExist(self, returnId, runName):
         """
         Check if the id already exists in the return list.
 
@@ -201,9 +286,13 @@ class FunnyProcedure:
         If existed, return true.
         Otherwise, return false.
         """
-
-        if returnId in self.returnList:
-            self.logUtil.log("Warning: this return id: " + returnId + " already exists.")
+        
+        if runName not in self.returnList:
+            self.returnList[runName] = {}
+            return False
+        
+        if returnId in self.returnList[runName]:
+            self.logUtil.log("Warning: this return id: " + returnId + " already exists.", "warning")
             return True
         else:
             return False
@@ -281,33 +370,47 @@ class FunnyProcedure:
         Summary of successful and failed cases.
         """
 
-        self.logUtil.log("++++++++++++++++++++++++++++++")
-        self.logUtil.log("Successful cases (" + str(len(self.successfulCases)) + '):', 'success')
+        failedNumber = 0
+        successfulNumber = 0
 
-        for case in self.successfulCases:
-            self.logUtil.log('+ ' + case['id'] + ' (' + str(case['testResult']['actualTime']) + ' ms)')
+        self.logUtil.log("Test Summary")
 
-        self.logUtil.log("")
-        self.logUtil.log("Failed cases (" + str(len(self.failedCases)) + '):', "warning")
+        for runName in self.summaries:
 
-        for case in self.failedCases:
-            testResult = case['testResult']
-            self.logUtil.log('+ ' + case['id'] + ' (' + str(testResult['actualTime']) + ' ms)')
+            successfulCases = self.summaries[runName]['successfulCases']
+            failedCases = self.summaries[runName]['failedCases']
 
-            self.logUtil.log("-----------------------------")
-            self.logUtil.log("Reason: ")
+            successfulNumber += len(successfulCases)
+            failedNumber += len(failedCases)
 
-            if not testResult['expectedValueTestResult'] and not (testResult['expectedReturn'] is None or testResult['expectedReturn'] == 'any'):
-                self.logUtil.log("Value dosn't match: (expect - " + str(testResult['expectedReturn']) + " | actual - " + str(testResult['actualReturn']) + ')', 'warning')
+            self.logUtil.log("++++++++++++++++++++++++++++++")
+            self.logUtil.log("Test Run:" + runName)
+            self.logUtil.log("++++++++++++++++++++++++++++++")
 
-            if not testResult['expectedTimeTestResult'] and not (testResult['expectedTime'] is None or testResult['expectedTime'] == 'any'):
-                self.logUtil.log("Unexpected time consumption (ms): (expect - " + str(testResult['expectedTime']) + " | actual - " + str(testResult['actualTime']) + ')', 'warning')
+            self.logUtil.log("Successful cases (" + str(len(successfulCases)) + '):', 'success')
 
-            self.logUtil.log("-----------------------------")
+            for case in successfulCases:
+                self.logUtil.log('+ ' + case['id'] + ' (' + str(case['testResult']['actualTime']) + ' ms)')
 
-        self.logUtil.log("\nTest end.\n")
+            self.logUtil.log("")
+            self.logUtil.log("Failed cases (" + str(len(failedCases)) + '):', "warning")
+
+            for case in failedCases:
+                testResult = case['testResult']
+                self.logUtil.log('+ ' + case['id'] + ' (' + str(testResult['actualTime']) + ' ms)')
+
+                self.logUtil.log("-----------------------------")
+                self.logUtil.log("Reason: ")
+
+                if not testResult['expectedValueTestResult'] and not (testResult['expectedReturn'] is None or testResult['expectedReturn'] == 'any'):
+                    self.logUtil.log("Value dosn't match: (expect - " + str(testResult['expectedReturn']) + " | actual - " + str(testResult['actualReturn']) + ')', 'warning')
+
+                if not testResult['expectedTimeTestResult'] and not (testResult['expectedTime'] is None or testResult['expectedTime'] == 'any'):
+                    self.logUtil.log("Unexpected time consumption (ms): (expect - " + str(testResult['expectedTime']) + " | actual - " + str(testResult['actualTime']) + ')', 'warning')
+
+                self.logUtil.log("-----------------------------")
 
         return {
-            'success': self.successfulCases,
-            'fail': self.failedCases,
+            'successNumber': successfulNumber,
+            'failedNumber': failedNumber,
         }
