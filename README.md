@@ -73,6 +73,9 @@ A standard procedure block looks like the following:
 - `params`: the params taken by the `command`. See `Standard Commands`.
 
 - `expect`: expected return for this test. If the actual return is the same as expected, the procedure will be considered as pass.
+ 
+    * Operator supported: for example, `['<', 2]` means the actual result is expected to be less than 2.
+    * Python function supported: for example, `['pythonFunc:len', '<', 2]` means `len(actual)` is expected to be less than 2.
 
 - `expectTime`: expected time consumption by this test. If the actual time consumption is less than or equal to the expected time consumption, the procedure will be considered as pass.
 
@@ -82,6 +85,8 @@ A standard procedure block looks like the following:
 In `condition` and `params`, `%result[ProcedureId]%` can be used to fetch other procedure's result. In `params`, this can even used inside a string to accomplish more complex tasks. For example, `https://%result[GetURLFromItem]%/login` is able to generate a url based on the result of `GetURLFromItem`.
 
 When referencing the subprocedures' results, the subprocedure name should be put before the procedure ID as the namespace. For example, `%result[SubprocedureName.ProcedureId]%`.
+
+When  referencing the loop's results, the loop name, loop number (index) and subprocedure name should be put before the procedure ID as the namespace. For example, `%result[LoopName.LoopNumber.SubprocedureName.ProcedureId]%`.
 
 #### Referencing the loop variable
 
@@ -244,4 +249,16 @@ css: the css of the target element.
         
 Return: bool
 
+#### output
 
+Output content. The content must be stringifiable
+
+Parameters:
+
+content: any
+
+Return: bool
+
+### Standard Procedure (stdProcedure)
+
+Standard procedures (stdProcedure) are procedures 
