@@ -33,20 +33,33 @@ class JSONStarter:
     def run(self, isHeadless = False, windowSize = "1920,1080"):
         """
         Run the procedure according to loaded json file
+
+        Return
+        ----------
+        bool
+        Success or not
         """
-        self.loadCases()
 
-        self.funnyProc = FunnyProcedure(isHeadless, windowSize)
+        try:
+            self.loadCases()
 
-        if self.customProcedurePath is not None:
-            self.funnyProc.loadCustomProcedures(self.customProcedurePath)
+            self.funnyProc = FunnyProcedure(isHeadless, windowSize)
 
-        for runName in self.funcList:
-            funcs = self.funcList[runName]
-            self.logUtil.log("Test Run: " + runName)
-            self.logUtil.log("++++++++++++++++++++++++++++++\n")
+            if self.customProcedurePath is not None:
+                self.funnyProc.loadCustomProcedures(self.customProcedurePath)
 
-            self.funnyProc.procedure(funcs, runName)
+            for runName in self.funcList:
+                funcs = self.funcList[runName]
+                self.logUtil.log("Test Run: " + runName)
+                self.logUtil.log("++++++++++++++++++++++++++++++\n")
+
+                if not self.funnyProc.procedure(funcs, runName):
+                    return False
+                
+            return True
+        except Exception as e:
+            self.logUtil.log(e)
+            return False
 
     def getSummary(self):
         """

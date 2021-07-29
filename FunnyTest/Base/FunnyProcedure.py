@@ -3,6 +3,8 @@ import sys
 import time
 import re
 import importlib
+import builtins
+import copy
 from .FunnyTestBase import FunnyTestBase
 from ..Log.TestLog import TestLog
 
@@ -43,11 +45,24 @@ class FunnyProcedure:
         if isinstance(param, str) and len(param) > 2:
 
             # Check for %loopParam%
-            if "%loopParam%" == param:
+            # Check for %result[procedureID]%
+            match = re.search(r'(.*)%loopParam%(.*)', param)
+
+            if match != None and len(match.groups()) >= 1:
 
                 if 'loopParam' in procedureDict:
 
-                    return procedureDict['loopParam']
+                    if not isinstance(procedureDict['loopParam'], str):
+                        return procedureDict['loopParam']
+
+                    prefix = match.group(1)
+                    resVal = prefix + procedureDict['loopParam']
+
+                    if len(match.groups()) > 1:
+                        surfix = match.group(2)
+                        resVal = resVal + surfix
+
+                    return resVal
 
             else:
 
@@ -59,7 +74,13 @@ class FunnyProcedure:
                     prefix = match.group(1)
 
                     if (runName in self.returnList) and (resKey in self.returnList[runName]):
-                        resVal = self.returnList[runName][resKey]
+
+                        savedRes = self.returnList[runName][resKey]
+
+                        if not isinstance(savedRes, str):
+                            return savedRes
+
+                        resVal = prefix + savedRes
 
                         if len(match.groups()) > 2:
                             surfix = match.group(3)
@@ -95,7 +116,7 @@ class FunnyProcedure:
         resParams = []
         for param in params:
             resParams.append(self.parseShortCode(param, runName, procedureDict))
-
+        
         return resParams
 
     def loadCustomProcedures(self, path):
@@ -166,7 +187,7 @@ class FunnyProcedure:
 
             self.summaries[runName]['successfulCases'].append(procedureDict)
 
-    def procedure(self, procedureList, runName, isSubprocedure = False):
+    def procedure(self, procedureList, runName, specialProcedure = None):
         """
         The function to deal with procedures 
 
@@ -197,8 +218,11 @@ class FunnyProcedure:
         rumName : string
             Run name for the procedures
         
-        isSubprocedure : bool
-            Whether the procedure is a subprocedure
+        specialProcedure : dict
+            {
+                'type': loop/subprocedure,
+                'parentName': name
+            }
 
         Return
         ----------
@@ -211,8 +235,15 @@ class FunnyProcedure:
             for procedureDict in procedureList:
                 procedureType = procedureDict['type']
                 command = procedureDict['command']
-                params = procedureDict['params']
                 id = procedureDict['id']
+
+                if specialProcedure is not None:
+                    id = specialProcedure['parentName'] + '.' + id
+                    procedureDict['id'] = id
+
+                params = None
+                if 'params' in procedureDict:
+                    params = procedureDict['params']
 
                 expectValue = None
                 if 'expect' in procedureDict:
@@ -227,7 +258,7 @@ class FunnyProcedure:
                     condition = procedureDict['condition']
                 
                 subprocedure = None
-                if 'subprocedure' in procedureDict and not isSubprocedure:
+                if 'subprocedure' in procedureDict and specialProcedure is None:
                     subprocedure = procedureDict['subprocedure']
 
                     if subprocedure not in self.subprocedureList:
@@ -237,13 +268,21 @@ class FunnyProcedure:
 
                     self.subprocedureList[subprocedure].append(procedureDict)
 
-                params = self.generateParams(params, runName, procedureDict)
+                    self.logUtil.log("Subprocedure: " + subprocedure + " [" + id + "] added.\n")
 
+                    continue
+
+                if params != None:
+                    params = self.generateParams(params, runName, procedureDict)
+                
                 self.logUtil.log("Processing: " + id)
                 self.logUtil.log("------------------------------------")
                 self.logUtil.log("type: " + procedureType)
                 self.logUtil.log("command: " + command)
-                self.logUtil.log("params: " + ','.join(map(lambda x: str(x), params)))
+
+                if params != None:
+                    self.logUtil.log("params (" + str(len(params)) + "): " \
+                        + ','.join(map(lambda x: (str(x) if len(str(x)) < 500 else str(x)[0:500] + '...') if hasattr(x, '__str__') else '<Unprintable variable>', params)))
 
                 if condition != None:
                     self.logUtil.log("condition: " + str(condition))
@@ -299,22 +338,33 @@ class FunnyProcedure:
                             self.logUtil.log('Error: ' + command + 'does not exist.', 'warning')
                     
                     else:
-                        self.logUtil.log("Duplicated procedure id.", 'warning')
+                        self.logUtil.log("Error: Duplicated procedure id.", 'warning')
                         break
 
                 # Start loop
                 # command => Subprocedure name
                 # params => The list to loop through
                 elif procedureType == 'loop':
-                    if command in self.subprocedureList and isinstance(params, list):
-                        for param in params:
-                            currentSubprocedures = self.subprocedureList[command]
+
+                    self.logUtil.log("\nLoop procedure start\n")
+
+                    if params is None or len(params) <= 0:
+                        self.logUtil.log("Error: illegal loop params.", 'warning')
+                        break
+
+                    loopParams = params[0]
+                    if command in self.subprocedureList and isinstance(loopParams, list):
+                        for (idx, param) in enumerate(loopParams):
+
+                            self.logUtil.log("Loop param: " + param + " subprocedure: " + command)
+
+                            currentSubprocedures = copy.deepcopy(self.subprocedureList[command])
 
                             # add the loop parameter to subprocedureDict
                             for subpro in currentSubprocedures:
                                 subpro['loopParam'] = param
 
-                            self.procedure(currentSubprocedures, runName, True)
+                            self.procedure(currentSubprocedures, runName, {'type': 'subprocedure', 'parentName': id + '.' + str(idx) + '.' + command})
 
                     else:
                         self.logUtil.log("Target subprodure for loop does not exist.", 'warning')
@@ -323,15 +373,20 @@ class FunnyProcedure:
                 # Call subprocedures
                 # command => Subprocedure name
                 elif procedureType == 'callSubprocedure':
+
+                    self.logUtil.log("\nCalling subprocedure - " + command + "\n")
+
                     if command in self.subprocedureList:
-                        self.procedure(self.subprocedureList[command], runName, True)
+                        subList = copy.deepcopy(self.subprocedureList[command])
+                        self.procedure(subList, runName, {'type': 'subprocedure', 'parentName': command})
                     else:
                         self.logUtil.log("Target subprodure does not exist.", 'warning')
                         break
 
                 self.logUtil.log("====================================\n\n")
 
-            self.funnyTestBase.close()
+            if specialProcedure is None:
+                self.funnyTestBase.close()
 
         except Exception as e:
             self.logUtil.log(e)
@@ -398,12 +453,51 @@ class FunnyProcedure:
         expectedValueTestResult = True
         if expectValue != 'any' and expectValue is not None:
             
-            if actual == expectValue:
-                outputTextValue = ("Success: expect matches.", 'success')
+            outputTextValue = ("Success: expect matches.", 'success')
+
+            if not isinstance(expectValue, list) and actual == expectValue:
                 expectedValueTestResult = True
+            elif isinstance(expectValue, list) and len(expectValue) == 2:
+                operator = expectValue[0].strip()
+
+                if isinstance(expectValue[1], str):
+                    expected = expectValue[1].strip()
+                else:
+                    expected = expectValue[1]
+
+                if eval(str(actual) + operator + str(expected)):
+                    expectedValueTestResult = True
+                else:
+                    expectedValueTestResult = False
+
+            elif isinstance(expectValue, list) and len(expectValue) == 3:
+                cmd = expectValue[0].strip()
+                operator = expectValue[1].strip()
+
+                if isinstance(expectValue[2], str):
+                    expected = expectValue[2].strip()
+                else:
+                    expected = expectValue[2]
+
+                cmdParts = cmd.split(':')
+
+                if len(cmdParts) == 2:
+                    cmdType = cmdParts[0].strip()
+                    cmdContent = cmdParts[1].strip()
+
+                    if cmdType == 'pythonFunc' and eval(str(getattr(builtins, cmdContent)(actual)) + operator + str(expected)):
+                        expectedValueTestResult = True
+                    else:
+                        expectedValueTestResult = False
+
+                else:
+                    expectedValueTestResult = False
+
             else:
-                outputTextValue = ("Error: expect is " + str(expectValue) + " | actual is" + str(actual), 'warning')
                 expectedValueTestResult = False
+
+            if not expectedValueTestResult:
+                outputTextValue = ("Error: expect is " + str(expectValue) + " | actual is" + str(actual), 'warning')
             
             self.logUtil.log(*outputTextValue)
 

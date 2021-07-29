@@ -1,5 +1,52 @@
 [
     {
+        "subprocedure": "subprocedure1",
+        "type": "customProcedure",
+        "id": "exampleSb1St1",
+        "command": "ExampleCustomStep",
+        "params": ["testParam1"],
+        "expect": false 
+    },
+    {
+        "subprocedure": "subprocedure1",
+        "type": "stdProcedure",
+        "id": "exampleSb1St2",
+        "command": "visit",
+        "params": ["https://google.com", "input[value='Google Search']", 20, "presence_of_element_located"],
+        "expect": true,
+        "expectTime": 3000
+    },
+    {
+        "subprocedure": "subprocedure2",
+        "type": "stdProcedure",
+        "id": "exampleSb2St1",
+        "command": "output",
+        "params": ["%loopParam%"],
+        "expect": true 
+    },
+    {
+        "type": "stdProcedure",
+        "id": "exampleP2S1",
+        "command": "visit",
+        "params": ["https://www.nzherald.co.nz/nz/politics/", ".story-card__heading__link", 20, "presence_of_element_located"],
+        "expect": true,
+        "expectTime": 10000
+    },
+    {
+        "type": "stdProcedure",
+        "id": "exampleP2S2",
+        "command": "getAttributes",
+        "params": [".story-card__heading__link", "href"],
+        "expect": ["pythonFunc:len", ">", 2],
+        "expectTime": 3000
+    },
+    {
+        "type": "loop",
+        "id": "exampleP2S3Loop",
+        "command": "subprocedure2",
+        "params": ["%result[exampleP2S2]%"]
+    },
+    {
         "type": "stdProcedure",
         "id": "exampleP1S1",
         "command": "visit",
@@ -13,5 +60,10 @@
         "command": "ExampleCustomStep",
         "params": ["testParam1"],
         "expect": false 
+    },
+    {
+        "type": "callSubprocedure",
+        "id": "exampleCallSb1",
+        "command": "subprocedure1"
     }
 ]

@@ -287,6 +287,47 @@ class FunnyTestBase:
 
         return None
 
+    def getAttributes(self, css, attr):
+        """
+        Count the attributes from elements.
+
+        Parameters
+        ----------
+        css : string
+            The css for locating the target.
+        
+        attr : string
+            The attribute name.
+        
+        Return
+        ----------
+        string
+        The corresponding attribute. If not found, return None
+        """
+
+        try:
+            targetEles = self.driver.find_elements(By.CSS_SELECTOR, css)
+            attributes = None
+
+            if targetEles is not None and len(targetEles) > 0:
+
+                attributes = []
+
+                for targetEle in targetEles:
+                    attribute = targetEle.get_attribute(attr)
+
+                    if attribute is not None:
+                        attributes.append(attribute)
+
+            return attributes
+
+        except Exception as e:
+            self.logUtil.log(e)
+            self.close()
+            return None
+
+        return None
+
     def countElements(self, css):
         """
         Count the target elements.
@@ -428,4 +469,28 @@ class FunnyTestBase:
             self.close()
             return False
 
+        return True
+
+    def output(self, content):
+        """
+        Output content to screen
+        
+        Parameters
+        ----------
+        content : any
+            The content to be output. It should be stringifiable.
+        
+        Return
+        ----------
+        bool
+        Return True if successfully ouput.
+        Otherwise return False.
+        """
+
+        try:
+            self.logUtil.log(str(content))
+        except Exception as e:
+            self.logUtil.log(e)
+            return False
+        
         return True
