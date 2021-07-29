@@ -275,6 +275,6 @@ Subprocedures are procedures grouped together to be called by `CallSubprocedure`
 
 Loop is a special procedure which can call a subprocedure multiple times. The list to loop through should be set as the first parm in `params`. The name of the subprocedure should be put in `command`.
 
-### CallSubprocedure (callSubprocedure)
+### Call Subprocedure (callSubprocedure)
 
-
+Call Subprocedure (callSubprocedure) is a special procedure which can call a subprocedure once. The name of the subprocedure should be put in `command`.
