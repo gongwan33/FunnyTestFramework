@@ -3,15 +3,15 @@
         "type": "stdProcedure",
         "id": "exampleP1S1",
         "command": "visit",
-        "params": ["https://google.com", "img", 20],
+        "params": ["https://google.com", "input[value='Google Search']", 20, "presence_of_element_located"],
         "expect": true,
-        "expectTime": 300
+        "expectTime": 3000
     },
     {
         "type": "customProcedure",
         "id": "exampleCP1S2",
         "command": "ExampleCustomStep",
         "params": ["testParam1"],
-        "expect": true
+        "expect": false 
     }
 ]
