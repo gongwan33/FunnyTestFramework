@@ -10,7 +10,7 @@ The Funny Test Framework is base on selenium. It consumes the test vectors (prec
 
 You don't need to install any dependencies if you use the container starter provided under the `docker` folder. It works together with other docker images environment created by gongwan33 perfectly. However, the docker environment doesn't support non headless mode at the moment. 
 
-#### Run with out docker
+#### Run without docker
 
 The following dependencies are need:
 
@@ -62,7 +62,7 @@ A standard procedure block looks like the following:
 
 `type`, `id`, `command`, `params` are compulsory. `expect` and `expectTime` are optional.
 
-- `type`: should either be `stdProcedure` or `customProcedure`.
+- `type`: should either be `stdProcedure` or `customProcedure` or `loop` or `callSubprocedure`.
 
 - `id`: the name of the current procedure. Every procedure should have a unique `id`.
 
@@ -76,9 +76,25 @@ A standard procedure block looks like the following:
 
 - `expectTime`: expected time consumption by this test. If the actual time consumption is less than or equal to the expected time consumption, the procedure will be considered as pass.
 
-### Referencing the Result of Another Procedure
+### Reference
+#### Referencing the Result of Another Procedure
 
 In `condition` and `params`, `%result[ProcedureId]%` can be used to fetch other procedure's result. In `params`, this can even used inside a string to accomplish more complex tasks. For example, `https://%result[GetURLFromItem]%/login` is able to generate a url based on the result of `GetURLFromItem`.
+
+When referencing the subprocedures' results, the subprocedure name should be put before the procedure ID as the namespace. For example, `%result[SubprocedureName.ProcedureId]%`.
+
+#### Referencing the loop variable
+
+`%loopParam%` can be used in `condition` or `params` to reference the loop variable. For example, in 
+
+```
+for item in items:
+    
+    # loop body
+    ...
+```
+
+`item` is the `%loopParam%` to be used in loop body.
 
 ### Standard Commands
 
@@ -96,21 +112,21 @@ Parameters:
 
 - waitFun: the waiting mode. For details, please refer to https://selenium-python.readthedocs.io/waits.html. The supported functions are:
 
-* presence_of_element_located
+    * presence_of_element_located
 
-* visibility_of_element_located
+    * visibility_of_element_located
 
-* visibility_of
+    * visibility_of
 
-* presence_of_all_elements_located
+    * presence_of_all_elements_located
 
-* invisibility_of_element_located
+    * invisibility_of_element_located
 
-* element_to_be_clickable
+    * element_to_be_clickable
 
-* element_to_be_selected
+    * element_to_be_selected
 
-* element_located_to_be_selected
+    * element_located_to_be_selected
 
 - appendCredential: the credentials for browser verification. (Format: "username:password")
 
