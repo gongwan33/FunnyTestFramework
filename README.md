@@ -261,4 +261,20 @@ Return: bool
 
 ### Standard Procedure (stdProcedure)
 
-Standard procedures (stdProcedure) are procedures 
+Standard procedures (stdProcedure) are procedures using `Standard Commands`. The `type` for **Standard Procedure** must be set to `stdProcedure`.
+
+### Custom Procedure (customProcedure)
+
+Custom procedures (customProcedure) are procedures using the functions injected when creating the starter (see **Quick Start**). The `type` for **Custom Procedure** must be set to `customProcedure`.
+
+### Subprocedure (subprocedure)
+
+Subprocedures are procedures grouped together to be called by `CallSubprocedure` or `Loop`. Subprocedures can have different `type` but must have a `subprocedure` property to define the name (should be unique) of the subprocedure.
+
+### Loop (loop)
+
+Loop is a special procedure which can call a subprocedure multiple times. The list to loop through should be set as the first parm in `params`. The name of the subprocedure should be put in `command`.
+
+### CallSubprocedure (callSubprocedure)
+
+
