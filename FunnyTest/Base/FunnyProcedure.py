@@ -17,8 +17,9 @@ class FunnyProcedure:
         self.customFuncMods = []
         self.summaries = {}
         self.logUtil = TestLog()
+        self.subprocedureList = {}
 
-    def parseShortCode(self, param, runName):
+    def parseShortCode(self, param, runName, procedureDict):
         """
         Parse short codes
 
@@ -26,6 +27,12 @@ class FunnyProcedure:
         ----------
         param : string
             The original param string
+
+        runName : string
+            The run name
+
+        procedureDict : dict
+            The procedure definition where the param is from
 
         Return
         ----------
@@ -35,6 +42,16 @@ class FunnyProcedure:
 
         if isinstance(param, str) and len(param) > 2:
 
+            # Check for %loopParam%
+            if "%loopParam%" == param:
+
+                if 'loopParam' in procedureDict:
+
+                    return procedureDict['loopParam']
+
+            else:
+
+                # Check for %result[procedureID]%
                 match = re.search(r'(.*)%result\[\"?\'?(\w+)\'?\"?\]%(.*)', param)
 
                 if match != None and len(match.groups()) >= 2:
@@ -54,7 +71,7 @@ class FunnyProcedure:
 
         return param
 
-    def generateParams(self, params, runName):
+    def generateParams(self, params, runName, procedureDict):
         """
         Filter params and replace the elements according to the Funny Test Magic Param rules
 
@@ -62,6 +79,12 @@ class FunnyProcedure:
         ----------
         params : list
             The original params
+
+        runName : string
+            The run name
+
+        procedureDict : dict
+            The procedure definition where the params are from
 
         Return
         ----------
@@ -71,7 +94,7 @@ class FunnyProcedure:
         
         resParams = []
         for param in params:
-            resParams.append(self.parseShortCode(param, runName))
+            resParams.append(self.parseShortCode(param, runName, procedureDict))
 
         return resParams
 
@@ -143,13 +166,13 @@ class FunnyProcedure:
 
             self.summaries[runName]['successfulCases'].append(procedureDict)
 
-    def procedure(self, procedureList, runName):
+    def procedure(self, procedureList, runName, isSubprocedure = False):
         """
         The function to deal with procedures 
 
         Parameters
         ----------
-        funcList : array
+        procedureList : array
             The array of function dict
             For example:
             [
@@ -170,6 +193,12 @@ class FunnyProcedure:
                 ...
             ]
             If a param starts with %, it means it's referring a return value from previous procedure.
+        
+        rumName : string
+            Run name for the procedures
+        
+        isSubprocedure : bool
+            Whether the procedure is a subprocedure
 
         Return
         ----------
@@ -196,8 +225,19 @@ class FunnyProcedure:
                 condition = None
                 if 'condition' in procedureDict:
                     condition = procedureDict['condition']
+                
+                subprocedure = None
+                if 'subprocedure' in procedureDict and not isSubprocedure:
+                    subprocedure = procedureDict['subprocedure']
 
-                params = self.generateParams(params, runName)
+                    if subprocedure not in self.subprocedureList:
+                        self.subprocedureList[subprocedure] = []
+
+                    del procedureDict['subprocedure']
+
+                    self.subprocedureList[subprocedure].append(procedureDict)
+
+                params = self.generateParams(params, runName, procedureDict)
 
                 self.logUtil.log("Processing: " + id)
                 self.logUtil.log("------------------------------------")
@@ -220,6 +260,8 @@ class FunnyProcedure:
                     continue
                 
                 timeStampStart = time.time()
+
+                # Call standard procedures
                 if procedureType == 'stdProcedure':
                     
                     if not self.checkReturnIdExist(id, runName):
@@ -235,6 +277,7 @@ class FunnyProcedure:
                         self.logUtil.log("Duplicated procedure id.", 'warning')
                         break
 
+                # Call custom procedures from injected outside definition file
                 elif procedureType == 'customProcedure':
                     driver = self.funnyTestBase.getDriver()
                     params.insert(0, driver)
@@ -257,6 +300,33 @@ class FunnyProcedure:
                     
                     else:
                         self.logUtil.log("Duplicated procedure id.", 'warning')
+                        break
+
+                # Start loop
+                # command => Subprocedure name
+                # params => The list to loop through
+                elif procedureType == 'loop':
+                    if command in self.subprocedureList and isinstance(params, list):
+                        for param in params:
+                            currentSubprocedures = self.subprocedureList[command]
+
+                            # add the loop parameter to subprocedureDict
+                            for subpro in currentSubprocedures:
+                                subpro['loopParam'] = param
+
+                            self.procedure(currentSubprocedures, runName, True)
+
+                    else:
+                        self.logUtil.log("Target subprodure for loop does not exist.", 'warning')
+                        break
+
+                # Call subprocedures
+                # command => Subprocedure name
+                elif procedureType == 'callSubprocedure':
+                    if command in self.subprocedureList:
+                        self.procedure(self.subprocedureList[command], runName, True)
+                    else:
+                        self.logUtil.log("Target subprodure does not exist.", 'warning')
                         break
 
                 self.logUtil.log("====================================\n\n")
