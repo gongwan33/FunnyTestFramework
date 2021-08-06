@@ -153,6 +153,7 @@ class FunnyTestBase:
             )
 
         except Exception as e:
+            self.logUtil.log('Not found.', 'warning')
             self.logUtil.log(e)
             return False
 

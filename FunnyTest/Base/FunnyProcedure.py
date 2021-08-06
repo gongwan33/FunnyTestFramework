@@ -294,7 +294,7 @@ class FunnyProcedure:
                     self.logUtil.log("expect time: " + str(expectTime))
                 self.logUtil.log("====================================")
 
-                if condition != None and not self.parseShortCode(condition, runName):
+                if condition != None and not self.parseShortCode(condition, runName, procedureDict):
                     self.logUtil.log("Condition value is: " + str(condition))
                     continue
                 

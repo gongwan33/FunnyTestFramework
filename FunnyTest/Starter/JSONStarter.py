@@ -43,12 +43,12 @@ class JSONStarter:
         try:
             self.loadCases()
 
-            self.funnyProc = FunnyProcedure(isHeadless, windowSize)
-
-            if self.customProcedurePath is not None:
-                self.funnyProc.loadCustomProcedures(self.customProcedurePath)
-
             for runName in self.funcList:
+                self.funnyProc = FunnyProcedure(isHeadless, windowSize)
+
+                if self.customProcedurePath is not None:
+                    self.funnyProc.loadCustomProcedures(self.customProcedurePath)
+
                 funcs = self.funcList[runName]
                 self.logUtil.log("Test Run: " + runName)
                 self.logUtil.log("++++++++++++++++++++++++++++++\n")
